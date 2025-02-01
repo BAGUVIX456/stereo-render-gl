@@ -26,6 +26,18 @@ bool firstMouse = true;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+float lastFrame_fps = 0.0f;
+int frameCount = 0;
+
+void measure_frame_time(float currentFrame) {
+    frameCount++;
+
+    if (currentFrame - lastFrame_fps >= 1.0f) {
+        cout << "FrameTime: " << ((currentFrame - lastFrame_fps)/double(frameCount))*1000.0f << endl;
+        frameCount = 0;
+        lastFrame_fps = currentFrame;
+    }
+}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -235,6 +247,7 @@ int main()
     {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
+        measure_frame_time(currentFrame);
         lastFrame = currentFrame;
 
         processInput(window);
