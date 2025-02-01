@@ -1,5 +1,6 @@
-CXX := clang++
-LINKER := -lglfw -lGL -lm -lX11 -lpthread -lXi -lXrandr -ldl -lassimp
+CXX := g++
+LINKER := -lglfw -lGL -lm -lX11 -lpthread -lXrandr -ldl -lassimp
+SO_FILE_DIR := -L/usr/lib/x86_64-linux-gnu
 SRC := src
 SHADER := src/shader/shader.cpp
 CAMERA := src/camera
@@ -9,11 +10,11 @@ OUT := gl
 BUILD := build
 
 run: $(OUT)
-	./$(BUILD)/$(OUT)
+	__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./$(BUILD)/$(OUT)
 
-$(OUT): $(SRC)/gl.cpp $(SHADER) $(MODEL) $(SRC)/glad.c $(MESH)
+$(OUT): $(SRC)/main.cpp $(SHADER) $(MODEL) $(SRC)/glad.c $(MESH)
 	if [ ! -d "$(BUILD)" ]; then mkdir $(BUILD); fi
-	$(CXX) $^ $(LINKER) -o $(BUILD)/$(OUT)
+	$(CXX) $^ -o $(BUILD)/$(OUT) $(LINKER) 
 
 clean:
 	rm -rf $(BUILD)
