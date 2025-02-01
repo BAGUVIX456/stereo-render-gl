@@ -138,6 +138,7 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
     glEnable(GL_MULTISAMPLE);
+    glfwSwapInterval(0);
 
     stbi_set_flip_vertically_on_load(true);
     Shader shaderProgram("shaders/shader.vert.glsl", "shaders/shader.frag.glsl");
