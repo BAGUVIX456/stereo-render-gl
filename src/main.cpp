@@ -63,7 +63,6 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastY = ypos;
 
     camera.ProcessMouseMovement(xoffset, yoffset);
-
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -126,7 +125,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "stereo stuff", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH * 2, SCR_HEIGHT, "stereo stuff", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -205,16 +204,27 @@ int main()
          1.0f, -1.0f,  1.0f
     };
 
-    float quadVertices[] = {
+    float quadVertices_left[] = {
         // positions   // texCoords
         -1.0f,  1.0f,  0.0f, 1.0f,
         -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
+         0.0f, -1.0f,  1.0f, 0.0f,
 
         -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
-    };	
+         0.0f, -1.0f,  1.0f, 0.0f,
+         0.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    float quadVertices_right[] = {
+        // positions   // texCoords
+        0.0f,  1.0f,  0.0f, 1.0f,
+        0.0f, -1.0f,  0.0f, 0.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+
+        0.0f,  1.0f,  0.0f, 1.0f,
+        1.0f, -1.0f,  1.0f, 0.0f,
+        1.0f,  1.0f,  1.0f, 1.0f
+    };
 
     unsigned int frame_left, frame_right;
     glGenFramebuffers(1, &frame_left);
@@ -265,13 +275,23 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glBindVertexArray(0);
 
-    unsigned int quadVAO, quadVBO;
-    glGenVertexArrays(1, &quadVAO);
-    glGenBuffers(1, &quadVBO);
+    unsigned int quadVAO_left, quadVAO_right, quadVBO_left, quadVBO_right;
+    glGenVertexArrays(1, &quadVAO_left);
+    glGenVertexArrays(1, &quadVAO_right);
+    glGenBuffers(1, &quadVBO_left);
+    glGenBuffers(1, &quadVBO_right);
 
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glBindVertexArray(quadVAO_left);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO_left);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices_left), quadVertices_left, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+
+    glBindVertexArray(quadVAO_right);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO_right);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices_right), quadVertices_right, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
@@ -342,12 +362,48 @@ int main()
             fishy.Draw(shaderProgram);
         }
 
+        glBindFramebuffer(GL_FRAMEBUFFER, frame_right);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 100.0f);
+        view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+
+        glDepthMask(GL_FALSE);
+        skyboxShader.use();
+        skyboxShader.setMat4("view", view);
+        skyboxShader.setMat4("projection", projection);
+
+        glBindVertexArray(skyboxVAO);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glDepthMask(GL_TRUE);
+
+        shaderProgram.use();
+
+        view = camera.GetViewMatrix();
+        shaderProgram.setMat4("view", view);
+        shaderProgram.setMat4("projection", projection);
+        shaderProgram.setFloat("_Time", glfwGetTime());
+        
+        for(int i=0; i<FISH_COUNT; i++)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, offsets[i]);
+            shaderProgram.setMat4("model", model);
+
+            fishy.Draw(shaderProgram);
+        }
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         quadShader.use();
-        glBindVertexArray(quadVAO);
+        glBindVertexArray(quadVAO_left);
         glBindTexture(GL_TEXTURE_2D, texture_left);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glBindVertexArray(quadVAO_right);
+        glBindTexture(GL_TEXTURE_2D, texture_right);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(window);
