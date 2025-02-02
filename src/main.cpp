@@ -115,7 +115,40 @@ unsigned int loadCubemap(vector<std::string> faces)
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return textureID;
-}  
+}
+
+void render_scene(Shader skyboxShader, unsigned int skyboxVAO, unsigned int skyboxTexture, Shader shaderProgram, glm::vec3 offsets[], Model fishy) {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 100.0f);
+    glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+
+    glDepthMask(GL_FALSE);
+    skyboxShader.use();
+    skyboxShader.setMat4("view", view);
+    skyboxShader.setMat4("projection", projection);
+
+    glBindVertexArray(skyboxVAO);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDepthMask(GL_TRUE);
+
+    shaderProgram.use();
+
+    view = camera.GetViewMatrix();
+    shaderProgram.setMat4("view", view);
+    shaderProgram.setMat4("projection", projection);
+    shaderProgram.setFloat("_Time", glfwGetTime());
+    
+    for(int i=0; i<FISH_COUNT; i++)
+    {
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, offsets[i]);
+        shaderProgram.setMat4("model", model);
+
+        fishy.Draw(shaderProgram);
+    }
+}
 
 int main()
 {
@@ -331,68 +364,10 @@ int main()
         processInput(window);
 
         glBindFramebuffer(GL_FRAMEBUFFER, frame_left);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 100.0f);
-        glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-
-        glDepthMask(GL_FALSE);
-        skyboxShader.use();
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-
-        glBindVertexArray(skyboxVAO);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glDepthMask(GL_TRUE);
-
-        shaderProgram.use();
-
-        view = camera.GetViewMatrix();
-        shaderProgram.setMat4("view", view);
-        shaderProgram.setMat4("projection", projection);
-        shaderProgram.setFloat("_Time", glfwGetTime());
-        
-        for(int i=0; i<FISH_COUNT; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, offsets[i]);
-            shaderProgram.setMat4("model", model);
-
-            fishy.Draw(shaderProgram);
-        }
+        render_scene(skyboxShader, skyboxVAO, skyboxTexture, shaderProgram, offsets, fishy);
 
         glBindFramebuffer(GL_FRAMEBUFFER, frame_right);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 100.0f);
-        view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-
-        glDepthMask(GL_FALSE);
-        skyboxShader.use();
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-
-        glBindVertexArray(skyboxVAO);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        glDepthMask(GL_TRUE);
-
-        shaderProgram.use();
-
-        view = camera.GetViewMatrix();
-        shaderProgram.setMat4("view", view);
-        shaderProgram.setMat4("projection", projection);
-        shaderProgram.setFloat("_Time", glfwGetTime());
-        
-        for(int i=0; i<FISH_COUNT; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, offsets[i]);
-            shaderProgram.setMat4("model", model);
-
-            fishy.Draw(shaderProgram);
-        }
+        render_scene(skyboxShader, skyboxVAO, skyboxTexture, shaderProgram, offsets, fishy);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT);
