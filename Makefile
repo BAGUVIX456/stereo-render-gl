@@ -1,6 +1,7 @@
 CXX := g++
 LINKER := -lglfw -lGL -lm -lX11 -lpthread -lXrandr -ldl -lassimp
 SO_FILE_DIR := -L/usr/lib/x86_64-linux-gnu
+DEBUG := -g
 SRC := src
 SHADER := src/shader/shader.cpp
 CAMERA := src/camera
@@ -14,7 +15,7 @@ run: $(OUT)
 
 $(OUT): $(SRC)/main.cpp $(SHADER) $(MODEL) $(SRC)/glad.c $(MESH)
 	if [ ! -d "$(BUILD)" ]; then mkdir $(BUILD); fi
-	$(CXX) $^ -o $(BUILD)/$(OUT) $(LINKER) 
+	$(CXX) $(DEBUG) $^ -o $(BUILD)/$(OUT) $(LINKER) 
 
 clean:
 	rm -rf $(BUILD)

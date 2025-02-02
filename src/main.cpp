@@ -126,7 +126,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SAMPLES, 4);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "stereo stuff", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -152,9 +152,9 @@ int main()
     glEnable(GL_MULTISAMPLE);
     glfwSwapInterval(0);
 
-    stbi_set_flip_vertically_on_load(true);
     Shader shaderProgram("shaders/shader.vert.glsl", "shaders/shader.frag.glsl");
     Shader skyboxShader("shaders/skybox.vert.glsl", "shaders/skybox.frag.glsl");
+    Shader quadShader("shaders/quad.vert.glsl", "shaders/quad.frag.glsl");
 
     stbi_set_flip_vertically_on_load(false);
     Model fishy("/home/dhanvith/OpenGL/boids/resources/fishy/fish.obj");
@@ -204,7 +204,54 @@ int main()
         -1.0f, -1.0f,  1.0f,
          1.0f, -1.0f,  1.0f
     };
-    
+
+    float quadVertices[] = {
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };	
+
+    unsigned int frame_left, frame_right;
+    glGenFramebuffers(1, &frame_left);
+    glGenFramebuffers(1, &frame_right);
+
+    unsigned int texture_left, texture_right;
+    glGenTextures(1, &texture_left);
+    glGenTextures(1, &texture_right);
+
+    unsigned int rbo_left, rbo_right;
+    glGenRenderbuffers(1, &rbo_left);
+    glGenRenderbuffers(1, &rbo_right);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, frame_left);
+    glBindTexture(GL_TEXTURE_2D, texture_left);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_left);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_left, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo_left);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, frame_right);
+    glBindTexture(GL_TEXTURE_2D, texture_right);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_right);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_right, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo_right);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
@@ -218,6 +265,18 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glBindVertexArray(0);
 
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+
     vector<std::string> faces
     {
         "/home/dhanvith/OpenGL/boids/resources/blue/right.png",
@@ -228,7 +287,6 @@ int main()
         "/home/dhanvith/OpenGL/boids/resources/blue/back.png"
     };
 
-    stbi_set_flip_vertically_on_load(false);
     unsigned int skyboxTexture = loadCubemap(faces);
 
     glm::vec3 offsets[FISH_COUNT];
@@ -252,6 +310,7 @@ int main()
 
         processInput(window);
 
+        glBindFramebuffer(GL_FRAMEBUFFER, frame_left);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 100.0f);
@@ -282,6 +341,14 @@ int main()
 
             fishy.Draw(shaderProgram);
         }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        quadShader.use();
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, texture_left);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
