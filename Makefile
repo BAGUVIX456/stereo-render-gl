@@ -1,7 +1,7 @@
 CXX := g++
 LINKER := -lglfw -lGL -lm -lX11 -lpthread -lXrandr -ldl -lassimp
 SO_FILE_DIR := -L/usr/lib/x86_64-linux-gnu
-DEBUG := -g
+# DEBUG := -g
 SRC := src
 SHADER := src/shader/shader.cpp
 CAMERA := src/camera

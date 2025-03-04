@@ -10,12 +10,10 @@
 #include <iostream>
 #include <vector>
 
-// Constants
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int FISH_COUNT = 1;
 
-// Camera and timing
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
@@ -25,7 +23,6 @@ float lastFrame = 0.0f;
 float lastFrame_fps = 0.0f;
 int frameCount = 0;
 
-// Function declarations
 void measure_frame_time(float currentFrame);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
@@ -79,7 +76,7 @@ int main()
 
     // Load model
     stbi_set_flip_vertically_on_load(false);
-    Model fishy("/home/dhanvith/OpenGL/boids/resources/fishy/fish.obj");
+    Model fishy("./resources/fishy/fish.obj");
 
     // Setup skybox
     float skyboxVertices[] = {
@@ -133,12 +130,12 @@ int main()
 
     // Load cubemap
     std::vector<std::string> faces = {
-        "/home/dhanvith/OpenGL/boids/resources/blue/right.png",
-        "/home/dhanvith/OpenGL/boids/resources/blue/left.png",
-        "/home/dhanvith/OpenGL/boids/resources/blue/top.png",
-        "/home/dhanvith/OpenGL/boids/resources/blue/bottom.png",
-        "/home/dhanvith/OpenGL/boids/resources/blue/front.png",
-        "/home/dhanvith/OpenGL/boids/resources/blue/back.png"
+        "./resources/blue/right.png",
+        "./resources/blue/left.png",
+        "./resources/blue/top.png",
+        "./resources/blue/bottom.png",
+        "./resources/blue/front.png",
+        "./resources/blue/back.png"
     };
 
     unsigned int skyboxTexture = loadCubemap(faces);
