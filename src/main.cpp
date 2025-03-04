@@ -1,18 +1,24 @@
+#include <cmath>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "stb_image.h"
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "shader/shader.hpp"
 #include "camera/camera.hpp"
 #include "model/model.h"
+#include <glm/trigonometric.hpp>
 #include <iostream>
 #include <vector>
 
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 const unsigned int FISH_COUNT = 1;
+const float CAMERA_OFFSET = 0.0325f;
 
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = SCR_WIDTH / 2.0f;
@@ -29,7 +35,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 unsigned int loadCubemap(const std::vector<std::string>& faces);
-void render_scene(Shader& skyboxShader, unsigned int skyboxVAO, unsigned int skyboxTexture, Shader& shaderProgram, const glm::vec3 offsets[], Model& fishy);
+void render_scene(Shader& skyboxShader, unsigned int skyboxVAO, unsigned int skyboxTexture, Shader& shaderProgram, const glm::vec3 offsets[], Model& fishy, bool isLeftEye, glm::vec3 offset);
+glm::mat4 get_frustum(bool isLeftEye);
 void setupFramebuffer(unsigned int& fbo, unsigned int& texture, unsigned int& rbo);
 void setupQuad(unsigned int& vao, unsigned int& vbo, const float* vertices, size_t size);
 void setupSkybox(unsigned int& vao, unsigned int& vbo, const float* vertices, size_t size);
@@ -151,7 +158,6 @@ int main()
     shaderProgram.setVec3("light.specular", 0.5f, 0.5f, 0.5f);
     shaderProgram.setFloat("material.shininess", 64);
 
-    // Main loop
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -163,11 +169,11 @@ int main()
 
         // Render to left framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, frame_left);
-        render_scene(skyboxShader, skyboxVAO, skyboxTexture, shaderProgram, offsets, fishy);
+        render_scene(skyboxShader, skyboxVAO, skyboxTexture, shaderProgram, offsets, fishy, true, glm::vec3(-CAMERA_OFFSET, 0.0f, 0.0f));
 
         // Render to right framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, frame_right);
-        render_scene(skyboxShader, skyboxVAO, skyboxTexture, shaderProgram, offsets, fishy);
+        render_scene(skyboxShader, skyboxVAO, skyboxTexture, shaderProgram, offsets, fishy, false, glm::vec3(CAMERA_OFFSET, 0.0f, 0.0f));
 
         // Render quads to screen
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -266,11 +272,11 @@ unsigned int loadCubemap(const std::vector<std::string>& faces) {
     return textureID;
 }
 
-void render_scene(Shader& skyboxShader, unsigned int skyboxVAO, unsigned int skyboxTexture, Shader& shaderProgram, const glm::vec3 offsets[], Model& fishy) {
+void render_scene(Shader& skyboxShader, unsigned int skyboxVAO, unsigned int skyboxTexture, Shader& shaderProgram, const glm::vec3 offsets[], Model& fishy, bool isLeftEye, glm::vec3 offset) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.01f, 100.0f);
-    glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+    glm::mat4 projection = get_frustum(isLeftEye);
+    glm::mat4 view = glm::mat4(glm::mat3(camera.GetViewMatrix(glm::vec3(0.0f))));
 
     glDepthMask(GL_FALSE);
     skyboxShader.use();
@@ -283,7 +289,7 @@ void render_scene(Shader& skyboxShader, unsigned int skyboxVAO, unsigned int sky
     glDepthMask(GL_TRUE);
 
     shaderProgram.use();
-    view = camera.GetViewMatrix();
+    view = camera.GetViewMatrix(offset);
     shaderProgram.setMat4("view", view);
     shaderProgram.setMat4("projection", projection);
     shaderProgram.setFloat("_Time", glfwGetTime());
@@ -294,6 +300,26 @@ void render_scene(Shader& skyboxShader, unsigned int skyboxVAO, unsigned int sky
         shaderProgram.setMat4("model", model);
         fishy.Draw(shaderProgram);
     }
+}
+
+glm::mat4 get_frustum(bool isLeftEye) {
+    float fov = glm::radians(camera.Zoom);
+    float aspect_ratio = (float)SCR_WIDTH/(float)SCR_HEIGHT;
+    float near = 0.5f;
+    float far = 100.0f;
+
+    float top = near * tan(fov / 2.0f);
+    float right = aspect_ratio * top;
+    float left;
+    if (isLeftEye) {
+        left = -right + CAMERA_OFFSET;
+        right = right + CAMERA_OFFSET;
+    } else {
+        left = -right - CAMERA_OFFSET;
+        right = right - CAMERA_OFFSET;
+    }
+
+    return glm::frustum(left, right, -top, top, near, far);
 }
 
 void setupFramebuffer(unsigned int& fbo, unsigned int& texture, unsigned int& rbo) {

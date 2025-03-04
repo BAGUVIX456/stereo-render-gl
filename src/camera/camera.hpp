@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include <glad/glad.h>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -54,9 +55,9 @@ public:
         updateCameraVectors();
     }
 
-    glm::mat4 GetViewMatrix()
+    glm::mat4 GetViewMatrix(glm::vec3 offset)
     {
-        return glm::lookAt(Position, Position + Front, Up);
+        return glm::lookAt(Position + offset, Position + offset + Front, Up);
     }
 
     void ProcessKeyboard(Camera_Movement direction, float deltaTime)
